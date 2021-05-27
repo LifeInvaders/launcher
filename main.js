@@ -3,6 +3,7 @@ const {app, BrowserWindow, ipcMain, Notification} = require('electron')
 const path = require('path')
 const fetch = require('node-fetch');
 const fs = require('fs')
+const  dns = require('dns')
 
 var AdmZip = require("adm-zip");
 const request = require("request");
@@ -33,7 +34,7 @@ function createWindow() {
 
     // mainWindow.setMinimumSize(800, 600)
     // Open the DevTools.
-    mainWindow.webContents.openDevTools()
+    // mainWindow.webContents.openDevTools()
 
 
 }
@@ -60,10 +61,28 @@ app.on('window-all-closed', function () {
 })
 
 function parse(file) {
-    if (fs.existsSync(file))
-        return new Promise((resolve, reject) => {
+    console.log(fs.existsSync(file))
+
+    return new Promise((resolve, reject) => {
+        if (fs.existsSync(file))
             resolve(JSON.parse(fs.readFileSync('version.json', 'utf8')))
+        else
+            reject("test erreur");
+    })
+
+}
+
+function IsConnectedToInternet() {
+    return new Promise((resolve, reject) => {
+        dns.resolve('www.google.com', function (err) {
+            if (err) {
+                return reject("You are not connected to internet")
+            } else {
+                return resolve("connected");
+            }
         })
+    })
+
 }
 
 function editVersionJSON(id) {
@@ -106,17 +125,22 @@ ipcMain.on("download-game", function (event, args) {
 })
 
 ipcMain.on("start", function (event, args) {
-    fetch("https://api.github.com/repos/LifeInvaders/game/releases/latest", {method: "Get"})
-        .then(res => res.json())
-        .then((json) => {
-            release = json
-            parse("version.json").then(data => {
-                if (data.version < json.id) {
-                    GetAsset()
-                    event.sender.send("notification", json.tag_name)
-                } else RunGame()
-            })
-        });
+    IsConnectedToInternet()
+        .then(
+            fetch("https://api.github.com/repos/LifeInvaders/game/releases/latest", {method: "Get"})
+            .then(res => res.json())
+            .then((json) => {
+                release = json
+                parse("version.json")
+                    .then(data => {
+                        if (data.version < json.id) {
+                            event.sender.send("notification", json.tag_name)
+                        } else RunGame()
+                    })
+                    .catch(data => event.sender.send("notification", json.tag_name))
+            }))
+        .catch(t => event.sender.send("error_notif", t))
+
 })
 
 ipcMain.on('online-status-changed', (event, status) => {

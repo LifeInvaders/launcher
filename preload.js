@@ -31,14 +31,17 @@ window.addEventListener('DOMContentLoaded', () => {
     })
 
 })
+ipc.on("error_notif",function (event,args) {
+    document.getElementById("playBtn").disabled = false;
+    document.getElementById('error_body').innerHTML = args
+    $("#toast_err").toast("show")
 
+})
 ipc.on("notification", function (event, args) {
-    // SendDownloadNotification()
-    // $("#toast").toast('show');
+
     document.getElementById("playBtn").disabled = false;
     document.getElementById('game-version').innerHTML = args
-    console.log("show notif", notif, args)
-    $('.toast').toast("show")
+    $('#toaster').toast("show")
 
 })
 ipc.on("start_progressBar",function (event, args) {
